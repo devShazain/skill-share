@@ -2,60 +2,71 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import '../styles/Login.css';
+import '../styles/Register.css';
 
-const Login = () => {
+const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { signup, updateUserProfile } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
+    if (password !== confirmPassword) {
+      return setError("Passwords don't match");
+    }
+    
+    if (password.length < 6) {
+      return setError("Password should be at least 6 characters");
     }
     
     try {
       setLoading(true);
-      await login(email, password);
+      const { user } = await signup(email, password);
+      
+      if (displayName) {
+        await updateUserProfile(user, { displayName });
+      }
+      
       navigate('/dashboard');
     } catch (error) {
-      setError(error.message || 'Failed to log in');
+      console.error(error);
+      setError(error.message || "Failed to create an account");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
+    <div className="register-container">
       <motion.div 
-        className="login-card"
+        className="register-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <motion.h1 
-          className="login-title"
+          className="register-title"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          Welcome to <span className="brand-text">SkillShare</span>
+          Join <span className="brand-text">SkillShare</span>
         </motion.h1>
         
         <motion.p 
-          className="login-subtitle"
+          className="register-subtitle"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          Sign in to exchange skills and grow your knowledge
+          Create an account to start sharing skills
         </motion.p>
         
         {error && (
@@ -70,11 +81,22 @@ const Login = () => {
         
         <motion.form 
           onSubmit={handleSubmit}
-          className="login-form"
+          className="register-form"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
+          <div className="form-group">
+            <label htmlFor="displayName">Name</label>
+            <input
+              type="text"
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your full name"
+            />
+          </div>
+          
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -99,9 +121,21 @@ const Login = () => {
             />
           </div>
           
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          
           <motion.button 
             type="submit" 
-            className="login-button"
+            className="register-button"
             disabled={loading}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
@@ -112,21 +146,21 @@ const Login = () => {
                 <span></span>
                 <span></span>
               </div>
-            ) : 'Sign In'}
+            ) : 'Create Account'}
           </motion.button>
         </motion.form>
         
         <motion.div 
-          className="register-link"
+          className="login-link"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Don't have an account? <Link to="/register">Register</Link>
+          Already have an account? <Link to="/login">Sign In</Link>
         </motion.div>
       </motion.div>
     </div>
   );
 };
 
-export default Login;
+export default Register; 
