@@ -68,6 +68,14 @@ const Navigation = () => {
           </NavLink>
           
           <NavLink 
+            to="/chats" 
+            className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+          >
+            <span className="nav-icon">💬</span>
+            <span className="nav-text">Chats</span>
+          </NavLink>
+          
+          <NavLink 
             to="/profile" 
             className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
           >
@@ -98,10 +106,10 @@ const Navigation = () => {
         {mobileMenuOpen && (
           <motion.div 
             className="mobile-nav"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
           >
             <NavLink 
               to="/dashboard" 
@@ -128,6 +136,14 @@ const Navigation = () => {
             </NavLink>
             
             <NavLink 
+              to="/chats" 
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+            >
+              <span className="nav-icon">💬</span>
+              <span className="nav-text">Chats</span>
+            </NavLink>
+            
+            <NavLink 
               to="/profile" 
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
             >
@@ -142,42 +158,8 @@ const Navigation = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
-      <div className="mobile-nav-bar">
-        <NavLink 
-          to="/dashboard" 
-          className={({ isActive }) => isActive ? 'mobile-nav-item active' : 'mobile-nav-item'}
-        >
-          <span className="nav-icon">🏠</span>
-          <span className="nav-text">Home</span>
-        </NavLink>
-        
-        <NavLink 
-          to="/requests" 
-          className={({ isActive }) => isActive ? 'mobile-nav-item active' : 'mobile-nav-item'}
-        >
-          <span className="nav-icon">📋</span>
-          <span className="nav-text">Requests</span>
-        </NavLink>
-        
-        <NavLink 
-          to="/browse" 
-          className={({ isActive }) => isActive ? 'mobile-nav-item active' : 'mobile-nav-item'}
-        >
-          <span className="nav-icon">🔍</span>
-          <span className="nav-text">Browse</span>
-        </NavLink>
-        
-        <NavLink 
-          to="/profile" 
-          className={({ isActive }) => isActive ? 'mobile-nav-item active' : 'mobile-nav-item'}
-        >
-          <span className="nav-icon">👤</span>
-          <span className="nav-text">Profile</span>
-        </NavLink>
-      </div>
     </nav>
   );
 };
 
-export default Navigation; 
+export default Navigation;

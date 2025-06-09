@@ -425,3 +425,33 @@ const SkillRequestSystem = () => {
 };
 
 export default SkillRequestSystem;
+
+
+// Add this function to the SkillRequestSystem component
+
+const handleAcceptRequest = async (request) => {
+    try {
+        // Update request status to accepted
+        await updateDoc(doc(db, 'skillRequests', request.id), {
+            status: 'accepted',
+            updatedAt: new Date()
+        });
+
+        // Create a new skill exchange session
+        await addDoc(collection(db, 'skillSessions'), {
+            participants: [request.from_user, request.to_user],
+            teacherUserId: request.to_user,  // The person who received the request is teaching
+            learnerUserId: request.from_user, // The person who sent the request is learning
+            teacherName: request.to_user_name,
+            learnerName: request.from_user_name,
+            skillRequested: request.skill_requested,
+            skillOffered: request.skill_offered,
+            requestId: request.id,
+            status: 'active',
+            createdAt: new Date()
+        });
+
+    } catch (error) {
+        console.error('Error accepting request:', error);
+    }
+};

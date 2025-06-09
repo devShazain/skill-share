@@ -10,6 +10,8 @@ import BrowseUsers from './components/BrowseUsers';
 import Navigation from './components/Navigation';
 import AnimatedBackground from './components/AnimatedBackground';
 import PrivateRoute from './components/PrivateRoute';
+import ChatList from './components/ChatList';
+import ChatPage from './components/ChatPage';
 import './styles/theme.css';
 import './App.css';
 
@@ -69,6 +71,32 @@ function App() {
                     <Navigation />
                     <main className="main-content">
                       <BrowseUsers />
+                    </main>
+                  </>
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/chats" 
+              element={
+                <PrivateRoute>
+                  <>
+                    <Navigation />
+                    <main className="main-content">
+                      <ChatList />
+                    </main>
+                  </>
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/chat/:sessionId" 
+              element={
+                <PrivateRoute>
+                  <>
+                    <Navigation />
+                    <main className="main-content">
+                      <ChatPage />
                     </main>
                   </>
                 </PrivateRoute>

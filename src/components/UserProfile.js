@@ -7,7 +7,7 @@ import { db, storage } from '../firebase';
 import '../styles/UserProfile.css';
 
 const UserProfile = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, updateUserData } = useAuth();
     const [loading, setLoading] = useState(true);
     const [editMode, setEditMode] = useState(false);
     const [profileImage, setProfileImage] = useState(null);
@@ -226,84 +226,62 @@ const UserProfile = () => {
     };
 
     const handleSaveProfile = async () => {
-        console.log('Save button clicked');
-        setSaving(true);
-        setSaveSuccess(false);
-        setSaveError('');
-        
         try {
-            if (!currentUser) {
-                console.error('No user is currently logged in');
-                throw new Error('No user is currently logged in');
-            }
-
-            console.log('Current user:', currentUser.uid);
-            console.log('Starting profile save...', { userData });
+            setSaving(true);
+            setSaveError('');
             
-            // Handle image upload if needed
-            let photoURL = userData.photoURL;
-            if (profileImage || imagePreview) {
-                console.log('Uploading new profile image...');
-                const uploadedURL = await uploadProfileImage();
-                if (uploadedURL) {
-                    photoURL = uploadedURL;
-                    console.log('New profile image uploaded:', photoURL);
-                } else {
-                    console.log('No new image URL received');
+            // Log the data being saved for debugging
+            console.log("Saving profile data:", {
+                displayName: userData.displayName,
+                bio: userData.bio,
+                location: userData.location,
+                profession: userData.profession,
+                languages: userData.languages,
+                experience: userData.experience,
+                socialLinks: userData.socialLinks,
+                teachSkills: userData.teachSkills,
+                learnSkills: userData.learnSkills
+            });
+            
+            // Try to save the profile data with retries
+            let retries = 3;
+            let success = false;
+            
+            while (retries > 0 && !success) {
+                try {
+                    await updateUserData({
+                        displayName: userData.displayName,
+                        bio: userData.bio,
+                        location: userData.location,
+                        profession: userData.profession,
+                        languages: userData.languages,
+                        experience: userData.experience,
+                        socialLinks: userData.socialLinks,
+                        teachSkills: userData.teachSkills,
+                        learnSkills: userData.learnSkills
+                    });
+                    success = true;
+                } catch (retryError) {
+                    console.error(`Save attempt failed (${retries} retries left):`, retryError);
+                    retries--;
+                    // Wait a bit before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
-
-            // Prepare the update data
-            const updateData = {
-                displayName: userData.displayName || '',
-                bio: userData.bio || '',
-                photoURL: photoURL || '',
-                teachSkills: userData.teachSkills || [],
-                learnSkills: userData.learnSkills || [],
-                location: userData.location || '',
-                profession: userData.profession || '',
-                languages: userData.languages || [],
-                experience: userData.experience || '',
-                socialLinks: userData.socialLinks || {
-                    linkedin: '',
-                    github: '',
-                    twitter: ''
-                },
-                updatedAt: new Date()
-            };
-
-            console.log('Updating Firestore with data:', updateData);
-
-            // Update Firestore
-            const userDocRef = doc(db, 'users', currentUser.uid);
-            console.log('User document reference:', userDocRef.path);
             
-            await updateDoc(userDocRef, updateData);
-            console.log('Firestore update successful');
-
-            // Update local state
-            setUserData(prev => ({ ...prev, photoURL }));
-            setSaveSuccess(true);
-            console.log('Profile saved successfully');
-
-            // Reset form after success
-            setTimeout(() => {
+            if (success) {
+                setSaveSuccess(true);
                 setEditMode(false);
-                setProfileImage(null);
-                setImagePreview(null);
-            }, 2000);
-
+                // Reset success message after 3 seconds
+                setTimeout(() => setSaveSuccess(false), 3000);
+            } else {
+                throw new Error("Failed after multiple retry attempts");
+            }
         } catch (error) {
-            console.error('Error updating profile:', error);
-            console.error('Error details:', {
-                code: error.code,
-                message: error.message,
-                stack: error.stack
-            });
-            setSaveError(error.message || 'Failed to save profile. Please try again.');
+            console.error('Error saving profile:', error);
+            setSaveError('Failed to save profile changes. Please try again later.');
         } finally {
             setSaving(false);
-            console.log('Save operation completed');
         }
     };
 
@@ -630,82 +608,6 @@ const UserProfile = () => {
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="skills-section">
-                        <div className="skills-column">
-                            <div className="skills-header">
-                                <h3>Skills I Can Teach</h3>
-                                {editMode && (
-                                    <button 
-                                        className="add-skill-button"
-                                        onClick={() => {
-                                            setSkillType('teach');
-                                            setShowSkillInput(true);
-                                            setNewSkill('');
-                                        }}
-                                    >
-                                        + Add Skill
-                                    </button>
-                                )}
-                            </div>
-                            <AnimatePresence>
-                                {showSkillInput && skillType === 'teach' && (
-                                    <motion.div 
-                                        className="add-skill-form"
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                    >
-                                        <input
-                                            type="text"
-                                            value={newSkill}
-                                            onChange={(e) => setNewSkill(e.target.value)}
-                                            placeholder="Add a skill"
-                                            onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
-                                            autoFocus
-                                        />
-                                        <div className="skill-form-buttons">
-                                            <button onClick={handleAddSkill}>Add</button>
-                                            <button onClick={() => setShowSkillInput(false)}>Cancel</button>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <div className="skills-list">
-                                {userData.teachSkills.length > 0 ? (
-                                    <motion.div
-                                        className="skill-tags"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.3 }}
-                                    >
-                                        {userData.teachSkills.map((skill, index) => (
-                                            <motion.div 
-                                                key={index} 
-                                                className="skill-tag"
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: index * 0.05 }}
-                                            >
-                                                {skill}
-                                                {editMode && (
-                                                    <button
-                                                        className="remove-skill"
-                                                        onClick={() => handleRemoveSkill(skill, 'teach')}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                    </motion.div>
-                                ) : (
-                                    <p className="no-skills">No skills added yet.</p>
-                                )}
                             </div>
                         </div>
 

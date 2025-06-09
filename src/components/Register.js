@@ -28,12 +28,8 @@ const Register = () => {
     
     try {
       setLoading(true);
-      const { user } = await signup(email, password);
-      
-      if (displayName) {
-        await updateUserProfile(user, { displayName });
-      }
-      
+      // Pass displayName as the third parameter
+      const { user } = await signup(email, password, displayName);
       navigate('/dashboard');
     } catch (error) {
       console.error(error);
@@ -41,7 +37,7 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
-  };
+};
 
   return (
     <div className="register-container">
@@ -163,4 +159,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;
