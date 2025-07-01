@@ -16,40 +16,59 @@ import { useAuth } from '../contexts/AuthContext';
 import '../styles/Chat.css';
 
 const Chat = ({ sessionId }) => {
-    const { currentUser } = useAuth();
+    const { currentUser, userProfile } = useAuth();
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const [partner, setPartner] = useState(null);
+    const [error, setError] = useState('');
     const messagesEndRef = useRef(null);
 
     // Fetch session details
     useEffect(() => {
         const fetchSession = async () => {
             try {
+                console.log("Fetching session:", sessionId);
                 const sessionDoc = await getDoc(doc(db, 'skillSessions', sessionId));
+                
                 if (sessionDoc.exists()) {
-                    const sessionData = sessionDoc.data();
+                    const sessionData = { id: sessionDoc.id, ...sessionDoc.data() };
+                    console.log("Session data:", sessionData);
                     setSession(sessionData);
                     
                     // Determine partner ID
-                    const partnerId = sessionData.participants.find(id => id !== currentUser.uid);
+                    const partnerId = sessionData.participants?.find(id => id !== currentUser.uid);
+                    console.log("Partner ID:", partnerId);
                     
-                    // Fetch partner details
-                    const partnerDoc = await getDoc(doc(db, 'users', partnerId));
-                    if (partnerDoc.exists()) {
-                        setPartner(partnerDoc.data());
+                    if (partnerId) {
+                        // Fetch partner details
+                        const partnerDoc = await getDoc(doc(db, 'users', partnerId));
+                        if (partnerDoc.exists()) {
+                            const partnerData = partnerDoc.data();
+                            console.log("Partner data:", partnerData);
+                            setPartner(partnerData);
+                        } else {
+                            console.log("Partner document not found");
+                            setError("Partner information not found");
+                        }
+                    } else {
+                        console.log("No partner found in session");
+                        setError("Invalid session data");
                     }
+                } else {
+                    console.log("Session not found");
+                    setError("Session not found");
                 }
             } catch (error) {
                 console.error('Error fetching session:', error);
+                setError("Failed to load chat session");
             } finally {
                 setLoading(false);
             }
         };
 
-        if (sessionId) {
+        if (sessionId && currentUser) {
             fetchSession();
         }
     }, [sessionId, currentUser]);
@@ -58,6 +77,8 @@ const Chat = ({ sessionId }) => {
     useEffect(() => {
         if (!sessionId) return;
 
+        console.log("Setting up message listener for session:", sessionId);
+        
         const q = query(
             collection(db, 'messages'),
             where('sessionId', '==', sessionId),
@@ -69,7 +90,10 @@ const Chat = ({ sessionId }) => {
                 id: doc.id,
                 ...doc.data()
             }));
+            console.log("Messages loaded:", messageData.length);
             setMessages(messageData);
+        }, (error) => {
+            console.error("Error listening to messages:", error);
         });
 
         return () => unsubscribe();
@@ -88,25 +112,58 @@ const Chat = ({ sessionId }) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
+        const messageText = newMessage.trim();
+        setNewMessage(''); // Clear input immediately for better UX
+
         try {
+            console.log("Sending message:", messageText);
+            
             await addDoc(collection(db, 'messages'), {
                 sessionId,
                 senderId: currentUser.uid,
-                senderName: currentUser.displayName || currentUser.email,
-                text: newMessage,
-                timestamp: serverTimestamp()
+                senderName: userProfile?.displayName || currentUser.displayName || currentUser.email,
+                text: messageText,
+                timestamp: serverTimestamp(),
+                createdAt: new Date()
             });
 
-            setNewMessage('');
+            console.log("Message sent successfully");
         } catch (error) {
             console.error('Error sending message:', error);
+            setError("Failed to send message");
+            setNewMessage(messageText); // Restore message on error
         }
+    };
+
+    const getSkillInfo = () => {
+        if (!session) return { teaching: '', learning: '' };
+        
+        const userRole = session.teacherUserId === currentUser.uid ? 'teacher' : 'learner';
+        
+        return {
+            teaching: userRole === 'teacher' ? session.skillOffered : session.skillRequested,
+            learning: userRole === 'teacher' ? session.skillRequested : session.skillOffered
+        };
     };
 
     if (loading) {
         return (
             <div className="chat-container">
-                <div className="loading">Loading chat...</div>
+                <div className="loading">
+                    <div className="spinner"></div>
+                    <p>Loading chat...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="chat-container">
+                <div className="error-message">
+                    <h3>⚠️ {error}</h3>
+                    <p>Please try refreshing the page or go back to your conversations.</p>
+                </div>
             </div>
         );
     }
@@ -114,10 +171,15 @@ const Chat = ({ sessionId }) => {
     if (!session) {
         return (
             <div className="chat-container">
-                <div className="error-message">Session not found</div>
+                <div className="error-message">
+                    <h3>Session not found</h3>
+                    <p>This chat session may have been removed or you don't have access to it.</p>
+                </div>
             </div>
         );
     }
+
+    const skillInfo = getSkillInfo();
 
     return (
         <div className="chat-container">
@@ -125,23 +187,35 @@ const Chat = ({ sessionId }) => {
                 <div className="chat-partner-info">
                     <div className="partner-avatar">
                         {partner?.photoURL ? (
-                            <img src={partner.photoURL} alt={partner.displayName} />
-                        ) : (
-                            <div className="avatar-placeholder">
-                                {partner?.displayName?.charAt(0) || '?'}
-                            </div>
-                        )}
+                            <img 
+                                src={partner.photoURL} 
+                                alt={partner.displayName || 'Partner'}
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                }}
+                            />
+                        ) : null}
+                        <div 
+                            className="avatar-placeholder"
+                            style={{ display: partner?.photoURL ? 'none' : 'flex' }}
+                        >
+                            {partner?.displayName?.charAt(0) || '👤'}
+                        </div>
                     </div>
                     <div className="partner-details">
                         <h3>{partner?.displayName || 'Partner'}</h3>
                         <div className="session-skills">
                             <span className="skill-badge teaching">
-                                Teaching: {session.skillFromUser1 === currentUser.uid ? session.skillFromUser1 : session.skillFromUser2}
+                                You're teaching: {skillInfo.teaching}
                             </span>
                             <span className="skill-badge learning">
-                                Learning: {session.skillFromUser1 === currentUser.uid ? session.skillFromUser2 : session.skillFromUser1}
+                                You're learning: {skillInfo.learning}
                             </span>
                         </div>
+                        <p className="session-date">
+                            Session started: {session.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -149,7 +223,11 @@ const Chat = ({ sessionId }) => {
             <div className="messages-container">
                 {messages.length === 0 ? (
                     <div className="no-messages">
-                        <p>No messages yet. Start the conversation!</p>
+                        <div className="welcome-message">
+                            <h4>👋 Welcome to your skill exchange chat!</h4>
+                            <p>This is the beginning of your conversation with {partner?.displayName || 'your partner'}.</p>
+                            <p>Start by introducing yourself and discussing how you'd like to exchange skills.</p>
+                        </div>
                     </div>
                 ) : (
                     messages.map((message) => (
@@ -161,9 +239,18 @@ const Chat = ({ sessionId }) => {
                             transition={{ duration: 0.3 }}
                         >
                             <div className="message-content">
+                                {message.senderId !== currentUser.uid && (
+                                    <div className="message-sender">{message.senderName}</div>
+                                )}
                                 <p>{message.text}</p>
                                 <span className="message-time">
-                                    {message.timestamp ? new Date(message.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...'}
+                                    {message.timestamp ? 
+                                        new Date(message.timestamp.toDate()).toLocaleTimeString([], { 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                        }) : 
+                                        'Sending...'
+                                    }
                                 </span>
                             </div>
                         </motion.div>
@@ -178,8 +265,14 @@ const Chat = ({ sessionId }) => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
+                    disabled={!!error}
+                    maxLength={500}
                 />
-                <button type="submit" className="send-button" disabled={!newMessage.trim()}>
+                <button 
+                    type="submit" 
+                    className="send-button" 
+                    disabled={!newMessage.trim() || !!error}
+                >
                     Send
                 </button>
             </form>

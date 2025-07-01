@@ -6,7 +6,7 @@ import {
     onAuthStateChanged,
     updateProfile
 } from "firebase/auth";
-import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 const AuthContext = createContext();
@@ -17,6 +17,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
+    const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -30,31 +31,30 @@ export function AuthProvider({ children }) {
                 displayName: name
             });
 
-            try {
-                // Then create the user document in Firestore
-                await setDoc(doc(db, 'users', userCredential.user.uid), {
-                    uid: userCredential.user.uid,
-                    email: userCredential.user.email,
-                    displayName: name,
-                    photoURL: '',
-                    bio: '',
-                    teachSkills: [],
-                    learnSkills: [],
-                    location: '',
-                    profession: '',
-                    languages: [],
-                    experience: '',
-                    socialLinks: {
-                        linkedin: '',
-                        github: '',
-                        twitter: ''
-                    },
-                    createdAt: new Date()
-                });
-            } catch (firestoreError) {
-                console.error("Error creating user document:", firestoreError);
-                // Continue anyway - we can create the document later
-            }
+            // Create the user document in Firestore
+            const userData = {
+                uid: userCredential.user.uid,
+                email: userCredential.user.email,
+                displayName: name,
+                photoURL: '',
+                bio: '',
+                teachSkills: [],
+                learnSkills: [],
+                location: '',
+                profession: '',
+                languages: [],
+                experience: '',
+                socialLinks: {
+                    linkedin: '',
+                    github: '',
+                    twitter: ''
+                },
+                createdAt: new Date(),
+                lastUpdated: new Date()
+            };
+
+            await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+            console.log("User document created successfully");
 
             return userCredential;
         } catch (error) {
@@ -68,40 +68,97 @@ export function AuthProvider({ children }) {
     }
 
     function logout() {
+        setUserProfile(null);
         return signOut(auth);
     }
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             console.log("Auth state changed:", user ? user.uid : "No user");
             setCurrentUser(user);
+            
+            if (user) {
+                // Set up real-time listener for user profile data
+                const userDocRef = doc(db, 'users', user.uid);
+                
+                const unsubscribeProfile = onSnapshot(userDocRef, (doc) => {
+                    if (doc.exists()) {
+                        const profileData = doc.data();
+                        setUserProfile(profileData);
+                        console.log("User profile loaded:", profileData);
+                    } else {
+                        console.log("No user profile found, will create one");
+                        setUserProfile(null);
+                    }
+                }, (error) => {
+                    console.error("Error listening to user profile:", error);
+                    setUserProfile(null);
+                });
+
+                // Store the unsubscribe function
+                user.unsubscribeProfile = unsubscribeProfile;
+            } else {
+                setUserProfile(null);
+            }
+            
             setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            unsubscribe();
+            // Clean up profile listener if it exists
+            if (currentUser && currentUser.unsubscribeProfile) {
+                currentUser.unsubscribeProfile();
+            }
+        };
     }, []);
 
-    // Add this function to update user profile
+    // Enhanced updateUserData function
     async function updateUserData(updates) {
         if (!currentUser) throw new Error("No user logged in");
         
         try {
+            console.log("Updating user data:", updates);
             const userRef = doc(db, 'users', currentUser.uid);
             
+            // Prepare the update data
+            const updateData = {
+                ...updates,
+                lastUpdated: new Date()
+            };
+
             // First, check if the document exists
             const docSnap = await getDoc(userRef);
             
             if (docSnap.exists()) {
                 // Update existing document
-                await updateDoc(userRef, updates);
+                await updateDoc(userRef, updateData);
+                console.log("User document updated successfully");
             } else {
                 // Create document if it doesn't exist
-                await setDoc(userRef, {
+                const newUserData = {
                     uid: currentUser.uid,
                     email: currentUser.email,
-                    ...updates,
-                    createdAt: new Date()
-                });
+                    displayName: currentUser.displayName || '',
+                    photoURL: currentUser.photoURL || '',
+                    bio: '',
+                    teachSkills: [],
+                    learnSkills: [],
+                    location: '',
+                    profession: '',
+                    languages: [],
+                    experience: '',
+                    socialLinks: {
+                        linkedin: '',
+                        github: '',
+                        twitter: ''
+                    },
+                    createdAt: new Date(),
+                    ...updateData
+                };
+                
+                await setDoc(userRef, newUserData);
+                console.log("User document created successfully");
             }
             
             // If displayName or photoURL is updated, also update auth profile
@@ -110,6 +167,7 @@ export function AuthProvider({ children }) {
                     displayName: updates.displayName || currentUser.displayName,
                     photoURL: updates.photoURL || currentUser.photoURL
                 });
+                console.log("Auth profile updated successfully");
             }
             
             return true;
@@ -119,25 +177,58 @@ export function AuthProvider({ children }) {
         }
     }
 
-    // Add session persistence check
-    async function checkAuthStatus() {
-        return new Promise((resolve) => {
-            const unsubscribe = onAuthStateChanged(auth, (user) => {
-                unsubscribe();
-                resolve(user);
-            });
-        });
+    // Function to create user profile if it doesn't exist
+    async function ensureUserProfile() {
+        if (!currentUser) return null;
+        
+        try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            const docSnap = await getDoc(userRef);
+            
+            if (!docSnap.exists()) {
+                const userData = {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName || '',
+                    photoURL: currentUser.photoURL || '',
+                    bio: '',
+                    teachSkills: [],
+                    learnSkills: [],
+                    location: '',
+                    profession: '',
+                    languages: [],
+                    experience: '',
+                    socialLinks: {
+                        linkedin: '',
+                        github: '',
+                        twitter: ''
+                    },
+                    createdAt: new Date(),
+                    lastUpdated: new Date()
+                };
+                
+                await setDoc(userRef, userData);
+                console.log("User profile created automatically");
+                return userData;
+            }
+            
+            return docSnap.data();
+        } catch (error) {
+            console.error("Error ensuring user profile:", error);
+            return null;
+        }
     }
 
     const value = {
         currentUser,
+        userProfile,
         signup,
         login,
         logout,
         error,
         setError,
-        updateUserData,  // Add this
-        checkAuthStatus  // Add this
+        updateUserData,
+        ensureUserProfile
     };
 
     return (

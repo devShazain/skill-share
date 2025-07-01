@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read and write their own user documents
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read other users' basic profile info (for browsing)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+    }
+    
+    // Allow skill requests to be created and managed
+    match /skillRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.from_user || 
+         request.auth.uid == resource.data.to_user);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.from_user;
+    }
+    
+    // Allow skill sessions
+    match /skillSessions/{sessionId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null;
+    }
+    
+    // Allow messages for chat
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+    }
+    
+    // Allow test collection for debugging (temporary)
+    match /test/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
