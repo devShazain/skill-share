@@ -24,3 +24,5 @@ Skill-Share is a web application designed to connect people who want to exchange
 - Overview of active skill exchange sessions
 - Quick access to ongoing conversations
 - Status updates for pending requests
+
+If you want to visit the live site, here’s the link: 👉 https://skill-share-app.vercel.app
