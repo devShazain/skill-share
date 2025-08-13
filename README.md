@@ -25,4 +25,4 @@ Skill-Share is a web application designed to connect people who want to exchange
 - Quick access to ongoing conversations
 - Status updates for pending requests
 
-If you want to visit the live site, here’s the link: 👉 https://skill-share-app.vercel.app
+If you want to visit the live site, here’s the link: 👉 https://skill-share-azure.vercel.app/login
