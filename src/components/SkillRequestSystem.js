@@ -31,8 +31,27 @@ const SkillRequestSystem = () => {
     useEffect(() => {
         if (!currentUser) return;
 
-        // Fetch users
-        fetchUsers();
+        const loadUsers = async () => {
+            try {
+                console.log("Fetching users for skill requests...");
+                const usersCollection = collection(db, 'users');
+                const userQuery = query(usersCollection, where('uid', '!=', currentUser.uid));
+                const querySnapshot = await getDocs(userQuery);
+
+                const usersData = querySnapshot.docs.map(docSnap => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                }));
+
+                console.log("Found users for requests:", usersData.length);
+                setUsers(usersData);
+            } catch (err) {
+                console.error("Error fetching users:", err);
+                setError('Failed to load users.');
+            }
+        };
+
+        loadUsers();
 
         // Listen for incoming requests
         const incomingQuery = query(
@@ -48,9 +67,9 @@ const SkillRequestSystem = () => {
         );
 
         const unsubscribeIncoming = onSnapshot(incomingQuery, (snapshot) => {
-            const requests = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            const requests = snapshot.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
             }));
             console.log("Incoming requests:", requests);
             setIncomingRequests(requests);
@@ -65,9 +84,9 @@ const SkillRequestSystem = () => {
         });
 
         const unsubscribeOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
-            const requests = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            const requests = snapshot.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
             }));
             console.log("Outgoing requests:", requests);
             setOutgoingRequests(requests);
@@ -85,26 +104,6 @@ const SkillRequestSystem = () => {
             unsubscribeOutgoing();
         };
     }, [currentUser]);
-
-    const fetchUsers = async () => {
-        try {
-            console.log("Fetching users for skill requests...");
-            const usersCollection = collection(db, 'users');
-            const userQuery = query(usersCollection, where('uid', '!=', currentUser.uid));
-            const querySnapshot = await getDocs(userQuery);
-            
-            const usersData = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            console.log("Found users for requests:", usersData.length);
-            setUsers(usersData);
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            setError('Failed to load users.');
-        }
-    };
 
     const handleSendRequest = async (e) => {
         e.preventDefault();

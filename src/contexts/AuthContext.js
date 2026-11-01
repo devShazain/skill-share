@@ -73,17 +73,25 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
+        let unsubscribeProfile = null;
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             console.log("Auth state changed:", user ? user.uid : "No user");
+
+            if (unsubscribeProfile) {
+                unsubscribeProfile();
+                unsubscribeProfile = null;
+            }
+
             setCurrentUser(user);
             
             if (user) {
                 // Set up real-time listener for user profile data
                 const userDocRef = doc(db, 'users', user.uid);
                 
-                const unsubscribeProfile = onSnapshot(userDocRef, (doc) => {
-                    if (doc.exists()) {
-                        const profileData = doc.data();
+                unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const profileData = docSnap.data();
                         setUserProfile(profileData);
                         console.log("User profile loaded:", profileData);
                     } else {
@@ -94,9 +102,6 @@ export function AuthProvider({ children }) {
                     console.error("Error listening to user profile:", error);
                     setUserProfile(null);
                 });
-
-                // Store the unsubscribe function
-                user.unsubscribeProfile = unsubscribeProfile;
             } else {
                 setUserProfile(null);
             }
@@ -106,9 +111,8 @@ export function AuthProvider({ children }) {
 
         return () => {
             unsubscribe();
-            // Clean up profile listener if it exists
-            if (currentUser && currentUser.unsubscribeProfile) {
-                currentUser.unsubscribeProfile();
+            if (unsubscribeProfile) {
+                unsubscribeProfile();
             }
         };
     }, []);

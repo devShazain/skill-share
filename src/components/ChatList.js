@@ -142,7 +142,7 @@ const ChatList = () => {
                     transition={{ delay: 0.2 }}
                 >
                     {sessions.map((session) => {
-                        const { partnerId, partnerName, partnerPhoto, skillTeaching, skillLearning } = getPartnerInfo(session);
+                        const { partnerName, partnerPhoto, skillTeaching, skillLearning } = getPartnerInfo(session);
                         
                         return (
                             <motion.div
