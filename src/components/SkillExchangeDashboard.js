@@ -17,9 +17,13 @@ const SkillExchangeDashboard = () => {
     const { currentUser } = useAuth();
     const [activeSessions, setActiveSessions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         if (!currentUser) return;
+
+        setError('');
+        setLoading(true);
 
         const q = query(
             collection(db, 'skillSessions'),
@@ -34,6 +38,15 @@ const SkillExchangeDashboard = () => {
                 ...doc.data()
             }));
             setActiveSessions(sessions);
+            setError('');
+            setLoading(false);
+        }, (err) => {
+            console.error('Error listening to skill sessions:', err);
+            setError(
+                err.code === 'failed-precondition'
+                    ? 'Session indexes are still building. Deploy firestore indexes or wait a few minutes, then refresh.'
+                    : 'Failed to load sessions. Please try again.'
+            );
             setLoading(false);
         });
 
@@ -67,6 +80,17 @@ const SkillExchangeDashboard = () => {
         return (
             <div className="skill-exchange-container">
                 <div className="loading-spinner">Loading your sessions...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="skill-exchange-container">
+                <div className="no-sessions">
+                    <h3>Could not load sessions</h3>
+                    <p>{error}</p>
+                </div>
             </div>
         );
     }

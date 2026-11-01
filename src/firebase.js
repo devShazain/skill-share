@@ -5,12 +5,12 @@ import { getStorage } from "firebase/storage";
 
 // Your Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyD__4wOCquAjsR8Sd_64QYFqc7L2agIi4A",
-    authDomain: "skill-share-83ef8.firebaseapp.com",
-    projectId: "skill-share-83ef8",
-    storageBucket: "skill-share-83ef8.appspot.com",
-    messagingSenderId: "1055962311819",
-    appId: "1:1055962311819:web:4234774b5a05d319a0b88e"
+    apiKey: "AIzaSyCKr0lXUemGmAJ4w4zUZW5wPa2_gmRkNWo",
+    authDomain: "skill-share-fdfb1.firebaseapp.com",
+    projectId: "skill-share-fdfb1",
+    storageBucket: "skill-share-fdfb1.firebasestorage.app",
+    messagingSenderId: "1049995999682",
+    appId: "1:1049995999682:web:fe1ee5ef40aa15e386be5b"
 };
 
 // Initialize Firebase

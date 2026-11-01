@@ -18,10 +18,14 @@ const ChatList = () => {
     const { currentUser } = useAuth();
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [partnerDetails, setPartnerDetails] = useState({});
 
     useEffect(() => {
         if (!currentUser) return;
+
+        setError('');
+        setLoading(true);
 
         const q = query(
             collection(db, 'skillSessions'),
@@ -57,6 +61,15 @@ const ChatList = () => {
             }
 
             setPartnerDetails(partnerData);
+            setError('');
+            setLoading(false);
+        }, (err) => {
+            console.error('Error listening to chat sessions:', err);
+            setError(
+                err.code === 'failed-precondition'
+                    ? 'Chat indexes are still building. Deploy firestore indexes or wait a few minutes, then refresh.'
+                    : 'Failed to load conversations. Please try again.'
+            );
             setLoading(false);
         });
 
@@ -81,6 +94,20 @@ const ChatList = () => {
         return (
             <div className="chat-list-container">
                 <div className="loading">Loading your conversations...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="chat-list-container">
+                <div className="no-sessions">
+                    <h3>Could not load conversations</h3>
+                    <p>{error}</p>
+                    <button type="button" className="browse-link" onClick={() => window.location.reload()}>
+                        Retry
+                    </button>
+                </div>
             </div>
         );
     }

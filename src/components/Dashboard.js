@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import {
+    collection,
+    query,
+    where,
+    onSnapshot
+} from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import SkillExchangeDashboard from './SkillExchangeDashboard';
 import SkillRequestSystem from './SkillRequestSystem';
@@ -17,14 +24,71 @@ const Dashboard = () => {
     });
 
     useEffect(() => {
-        // This would typically fetch real data from Firestore
-        // For demo purposes, setting some placeholder stats
-        setStats({
-            activeSessions: 3,
-            pendingRequests: 2,
-            completedSessions: 5
+        if (!currentUser) return;
+
+        const sessionsQuery = query(
+            collection(db, 'skillSessions'),
+            where('participants', 'array-contains', currentUser.uid)
+        );
+
+        const incomingQuery = query(
+            collection(db, 'skillRequests'),
+            where('to_user', '==', currentUser.uid),
+            where('status', '==', 'pending')
+        );
+
+        const outgoingPendingQuery = query(
+            collection(db, 'skillRequests'),
+            where('from_user', '==', currentUser.uid),
+            where('status', '==', 'pending')
+        );
+
+        let activeSessions = 0;
+        let completedSessions = 0;
+        let incomingPending = 0;
+        let outgoingPending = 0;
+
+        const publish = () => {
+            setStats({
+                activeSessions,
+                completedSessions,
+                pendingRequests: incomingPending + outgoingPending
+            });
+        };
+
+        const unsubSessions = onSnapshot(sessionsQuery, (snapshot) => {
+            activeSessions = 0;
+            completedSessions = 0;
+            snapshot.docs.forEach((docSnap) => {
+                const status = docSnap.data().status;
+                if (status === 'active') activeSessions += 1;
+                if (status === 'completed') completedSessions += 1;
+            });
+            publish();
+        }, (err) => {
+            console.error('Dashboard sessions stats error:', err);
         });
-    }, []);
+
+        const unsubIncoming = onSnapshot(incomingQuery, (snapshot) => {
+            incomingPending = snapshot.size;
+            publish();
+        }, (err) => {
+            console.error('Dashboard incoming request stats error:', err);
+        });
+
+        const unsubOutgoing = onSnapshot(outgoingPendingQuery, (snapshot) => {
+            outgoingPending = snapshot.size;
+            publish();
+        }, (err) => {
+            console.error('Dashboard outgoing request stats error:', err);
+        });
+
+        return () => {
+            unsubSessions();
+            unsubIncoming();
+            unsubOutgoing();
+        };
+    }, [currentUser]);
 
     const dashboardTabs = [
         { id: 'overview', label: 'Overview', icon: '📊' },
@@ -98,7 +162,7 @@ const Dashboard = () => {
                                     className="action-card"
                                     whileHover={{ scale: 1.03, boxShadow: "0 10px 20px rgba(0,0,0,0.15)" }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => navigate('/browse-users')}
+                                    onClick={() => navigate('/browse')}
                                 >
                                     <div className="action-icon">🔍</div>
                                     <h4>Browse Users</h4>

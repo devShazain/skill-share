@@ -1,7 +1,12 @@
 [
   {
-    "origin": ["http://localhost:3000", "https://skill-share-83ef8.web.app", "https://skill-share-83ef8.firebaseapp.com"],
+    "origin": [
+      "http://localhost:3000",
+      "https://skill-share-azure.vercel.app",
+      "https://skill-share-fdfb1.web.app",
+      "https://skill-share-fdfb1.firebaseapp.com"
+    ],
     "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
     "maxAgeSeconds": 3600
   }
-] 
+]

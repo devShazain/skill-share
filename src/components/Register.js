@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuthErrorMessage } from '../utils/authErrors';
 import '../styles/Register.css';
 
 const Register = () => {
@@ -11,12 +12,16 @@ const Register = () => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signup, updateUserProfile } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!displayName.trim()) {
+      return setError('Please enter your name');
+    }
     
     if (password !== confirmPassword) {
       return setError("Passwords don't match");
@@ -28,16 +33,15 @@ const Register = () => {
     
     try {
       setLoading(true);
-      // Pass displayName as the third parameter
-      const { user } = await signup(email, password, displayName);
+      await signup(email, password, displayName.trim());
       navigate('/dashboard');
     } catch (error) {
       console.error(error);
-      setError(error.message || "Failed to create an account");
+      setError(getAuthErrorMessage(error, 'register'));
     } finally {
       setLoading(false);
     }
-};
+  };
 
   return (
     <div className="register-container">
@@ -90,6 +94,7 @@ const Register = () => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your full name"
+              required
             />
           </div>
           

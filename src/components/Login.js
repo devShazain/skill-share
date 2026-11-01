@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuthErrorMessage } from '../utils/authErrors';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -26,7 +27,7 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (error) {
-      setError(error.message || 'Failed to log in');
+      setError(getAuthErrorMessage(error, 'login'));
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,11 @@ const Login = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Don't have an account? <Link to="/register">Register</Link>
+          {error?.includes('Register') ? (
+            <>New here? <Link to="/register">Create an account</Link></>
+          ) : (
+            <>Don't have an account? <Link to="/register">Register</Link></>
+          )}
         </motion.div>
       </motion.div>
     </div>

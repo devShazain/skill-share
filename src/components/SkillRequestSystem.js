@@ -54,8 +54,14 @@ const SkillRequestSystem = () => {
             }));
             console.log("Incoming requests:", requests);
             setIncomingRequests(requests);
-        }, (error) => {
-            console.error("Error listening to incoming requests:", error);
+            setError('');
+        }, (err) => {
+            console.error("Error listening to incoming requests:", err);
+            setError(
+                err.code === 'failed-precondition'
+                    ? 'Request indexes are still building. Deploy firestore indexes or wait a few minutes, then refresh.'
+                    : 'Failed to load incoming requests.'
+            );
         });
 
         const unsubscribeOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
@@ -65,8 +71,13 @@ const SkillRequestSystem = () => {
             }));
             console.log("Outgoing requests:", requests);
             setOutgoingRequests(requests);
-        }, (error) => {
-            console.error("Error listening to outgoing requests:", error);
+        }, (err) => {
+            console.error("Error listening to outgoing requests:", err);
+            setError(
+                err.code === 'failed-precondition'
+                    ? 'Request indexes are still building. Deploy firestore indexes or wait a few minutes, then refresh.'
+                    : 'Failed to load outgoing requests.'
+            );
         });
 
         return () => {

@@ -92,8 +92,13 @@ const Chat = ({ sessionId }) => {
             }));
             console.log("Messages loaded:", messageData.length);
             setMessages(messageData);
-        }, (error) => {
-            console.error("Error listening to messages:", error);
+        }, (err) => {
+            console.error("Error listening to messages:", err);
+            setError(
+                err.code === 'failed-precondition'
+                    ? 'Message indexes are still building. Deploy firestore indexes or wait a few minutes, then refresh.'
+                    : 'Failed to load messages.'
+            );
         });
 
         return () => unsubscribe();
